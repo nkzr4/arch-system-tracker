@@ -1,10 +1,28 @@
 #!/bin/bash
 # compare.sh - Compara dois snapshots
 
+# Função de logging
+log() {
+    local level="$1"
+    local msg="$2"
+    case "$level" in
+        INFO)    echo "[INFO] $msg" ;;
+        SUCESSO) echo "[SUCESSO] $msg" ;;
+        ERRO)    echo "[ERRO] $msg" >&2 ;;
+    esac
+}
+
+# Tratamento de erros
+handle_error() {
+    log ERRO "Ocorreu um erro inesperado durante a execução do script."
+    exit 1
+}
+trap handle_error ERR
+
+log INFO "Iniciando comparação de snapshots..."
 SNAPSHOT_DIR="$HOME/arch-system-tracker/snapshots"
 
-# Listar snapshots
-echo "📊 Snapshots disponíveis:"
+log INFO "Snapshots disponíveis..."
 snapshots=($(ls -1t "$SNAPSHOT_DIR"/system-*.json))
 for i in "${!snapshots[@]}"; do
     basename="${snapshots[$i]}"
@@ -12,6 +30,7 @@ for i in "${!snapshots[@]}"; do
     echo "  [$((i+1))] $timestamp"
 done
 
+log INFO "Definindo snapshots para comparação..."
 echo ""
 echo -n "Snapshot ANTIGO (número ou Enter para penúltimo): "
 read -r old_num
@@ -26,10 +45,10 @@ OLD_SNAP="${snapshots[$((old_num-1))]}"
 NEW_SNAP="${snapshots[$((new_num-1))]}"
 
 if [ ! -f "$OLD_SNAP" ] || [ ! -f "$NEW_SNAP" ]; then
-    echo "✗ Snapshots inválidos"
     exit 1
 fi
 
+log INFO "Comparando snapshots..."
 echo ""
 echo "🔍 Comparando:"
 echo "  Antigo: $(basename $OLD_SNAP)"
@@ -104,3 +123,5 @@ rm /tmp/old_packages.txt /tmp/new_packages.txt /tmp/old_services.txt /tmp/new_se
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+log SUCESSO "Comparação finalizada!"

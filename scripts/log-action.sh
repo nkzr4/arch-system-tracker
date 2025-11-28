@@ -1,10 +1,28 @@
 #!/bin/bash
 # log-action.sh - Registra ação manual no sistema
 
+# Função de logging
+log() {
+    local level="$1"
+    local msg="$2"
+    case "$level" in
+        INFO)    echo "[INFO] $msg" ;;
+        SUCESSO) echo "[SUCESSO] $msg" ;;
+        ERRO)    echo "[ERRO] $msg" >&2 ;;
+    esac
+}
+
+# Tratamento de erros
+handle_error() {
+    log ERRO "Ocorreu um erro inesperado durante a execução do script."
+    exit 1
+}
+trap handle_error ERR
+
+log INFO "Iniciando log de alteração manual..."
 LOG_FILE="$HOME/arch-system-tracker/logs/manual-actions.jsonl"
 
-# JSONL = JSON Lines (um JSON por linha, fácil de processar)
-echo "📝 Registrar ação manual"
+log INFO "Registrando alteração manual..."
 echo ""
 echo "Exemplos:"
 echo "  - Instalei pacote X via yay"
@@ -15,16 +33,17 @@ echo -n "Descreva a ação: "
 read -r action
 
 if [ -z "$action" ]; then
-    echo "✗ Ação vazia, cancelando"
     exit 1
 fi
 
-# Adicionar ao log
+log INFO "Adicionando alteração ao log..."
 echo "{\"timestamp\": \"$(date -Iseconds)\", \"action\": \"$action\"}" >> "$LOG_FILE"
 
-echo "✓ Ação registrada"
+log SUCESSO "Alteração adicionada com sucesso em: $LOG_FILE"
 
-# Commit no git
+log INFO "Comitando no Git..."
 cd ~/arch-system-tracker
 git add logs/
 git commit -m "Log: $action" --quiet 2>/dev/null || true
+
+log SUCESSO "Commit criado com sucesso: \"Log: $action\""

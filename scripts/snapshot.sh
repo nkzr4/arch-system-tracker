@@ -1,12 +1,29 @@
 #!/bin/bash
 # snapshot.sh - Captura estado completo do sistema em JSON
 
+# Função de logging
+log() {
+    local level="$1"
+    local msg="$2"
+    case "$level" in
+        INFO)    echo "[INFO] $msg" ;;
+        SUCESSO) echo "[SUCESSO] $msg" ;;
+        ERRO)    echo "[ERRO] $msg" >&2 ;;
+    esac
+}
+
+# Tratamento de erros
+handle_error() {
+    log ERRO "Ocorreu um erro inesperado durante a execução do script."
+    exit 1
+}
+trap handle_error ERR
+
+log INFO "Iniciando criação de snapshot..."
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 SNAPSHOT_FILE="$HOME/arch-system-tracker/snapshots/system-$TIMESTAMP.json"
 
-echo "📸 Criando snapshot do sistema..."
-
-# Gerar JSON completo
+log INFO "Gerando arquivo JSON: $SNAPSHOT_FILE"
 cat > "$SNAPSHOT_FILE" << EOF
 {
   "metadata": {
@@ -44,17 +61,25 @@ cat > "$SNAPSHOT_FILE" << EOF
 }
 EOF
 
-# Formatar JSON (corrigir possíveis erros)
+log INFO "Formatando JSON..."
 jq '.' "$SNAPSHOT_FILE" > "${SNAPSHOT_FILE}.tmp" && mv "${SNAPSHOT_FILE}.tmp" "$SNAPSHOT_FILE"
 
-# Criar link para "latest"
+log INFO "Criando link para 'latest'..."
 ln -sf "$SNAPSHOT_FILE" "$HOME/arch-system-tracker/snapshots/latest.json"
 
-echo "✓ Snapshot salvo: $SNAPSHOT_FILE"
+log SUCESSO "Snapshot criado com sucesso em: $SNAPSHOT_FILE"
 
-# Auto-commit no git
-cd ~/arch-system-tracker
+log INFO "Obtendo descrição para o commit..."
+read -rp "Digite uma breve descrição para este snapshot (opcional): " COMMIT_DESC
+if [[ -z "$COMMIT_DESC" ]]; then
+    COMMIT_MSG="Snapshot: $TIMESTAMP"
+else
+    COMMIT_MSG="Snapshot: $TIMESTAMP - $COMMIT_DESC"
+fi
+
+log INFO "Comitando no Git..."
+cd ~/arch-system-tracker || exit 1
 git add snapshots/
-git commit -m "Snapshot: $TIMESTAMP" --quiet 2>/dev/null || true
+git commit -m "$COMMIT_MSG" --quiet 2>/dev/null || log ERRO "Falha ao criar commit"
 
-echo "✓ Snapshot commitado no Git"
+log SUCESSO "Commit criado com sucesso: \"$COMMIT_MSG\""
