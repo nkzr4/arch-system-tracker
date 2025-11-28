@@ -45,7 +45,7 @@ if [[ "$response" =~ ^[Ss]$ ]]; then
     log SUCESSO "Pacotes órfãos removidos!"
     
     log INFO "Iniciando snapshot automatico.." 
-    ~/arch-system-tracker/scripts/snapshot.sh
+    ~/.local/share/arch-system-tracker/scripts/snapshot.sh
 else
     log INFO "Operação cancelada."
 fi

@@ -20,7 +20,7 @@ handle_error() {
 trap handle_error ERR
 
 log INFO "Iniciando log de alteração manual..."
-LOG_FILE="$HOME/arch-system-tracker/logs/manual-actions.jsonl"
+LOG_FILE="$HOME/.local/share/arch-system-tracker/logs/manual-actions.jsonl"
 
 log INFO "Registrando alteração manual..."
 echo ""
@@ -42,7 +42,7 @@ echo "{\"timestamp\": \"$(date -Iseconds)\", \"action\": \"$action\"}" >> "$LOG_
 log SUCESSO "Alteração adicionada com sucesso em: $LOG_FILE"
 
 log INFO "Comitando no Git..."
-cd ~/arch-system-tracker
+cd ~/.local/share/arch-system-tracker
 git add logs/
 git commit -m "Log: $action" --quiet 2>/dev/null || true
 

@@ -21,7 +21,14 @@ trap handle_error ERR
 
 log INFO "Iniciando criação de snapshot..."
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-SNAPSHOT_FILE="$HOME/arch-system-tracker/snapshots/system-$TIMESTAMP.json"
+SNAPSHOT_FILE="$HOME/.local/share/arch-system-tracker/snapshots/system-$TIMESTAMP.json"
+
+log INFO "Verificando existencia de instaladores auxiliares..."
+YAY_INSTALLED=false
+PARU_INSTALLED=false
+
+command -v yay >/dev/null 2>&1 && YAY_INSTALLED=true
+command -v paru >/dev/null 2>&1 && PARU_INSTALLED=true
 
 log INFO "Gerando arquivo JSON: $SNAPSHOT_FILE"
 cat > "$SNAPSHOT_FILE" << EOF
@@ -36,11 +43,29 @@ cat > "$SNAPSHOT_FILE" << EOF
     "explicit": $(pacman -Qe | jq -R -s 'split("\n") | map(select(length > 0) | split(" ") | {name: .[0], version: .[1]})'),
     "all": $(pacman -Q | jq -R -s 'split("\n") | map(select(length > 0) | split(" ") | {name: .[0], version: .[1]})'),
     "aur": $(pacman -Qm | jq -R -s 'split("\n") | map(select(length > 0) | split(" ") | {name: .[0], version: .[1]})'),
+    "yay": $( if [ "$YAY_INSTALLED" = true ]; then
+                yay -Qm | jq -R -s 'split("\n") | map(select(length > 0) | split(" ") | {name: .[0], version: .[1]})';
+              else
+                echo "null";
+              fi ),
+    "paru": $( if [ "$PARU_INSTALLED" = true ]; then
+                 paru -Qm | jq -R -s 'split("\n") | map(select(length > 0) | split(" ") | {name: .[0], version: .[1]})';
+               else
+                 echo "null";
+               fi ),
     "orphans": $(pacman -Qtdq 2>/dev/null | jq -R -s 'split("\n") | map(select(length > 0))' || echo '[]'),
     "count": {
       "explicit": $(pacman -Qe | wc -l),
       "total": $(pacman -Q | wc -l),
       "aur": $(pacman -Qm | wc -l)
+    }
+  },
+  "helpers": {
+    "yay_installed": $( [ "$YAY_INSTALLED" = true ] && echo "true" || echo "false" ),
+    "paru_installed": $( [ "$PARU_INSTALLED" = true ] && echo "true" || echo "false" ),
+    "versions": {
+      "yay": "$( [ "$YAY_INSTALLED" = true ] && yay --version 2>/dev/null | head -n1 )",
+      "paru": "$( [ "$PARU_INSTALLED" = true ] && paru --version 2>/dev/null | head -n1 )"
     }
   },
   "services": {
@@ -65,7 +90,7 @@ log INFO "Formatando JSON..."
 jq '.' "$SNAPSHOT_FILE" > "${SNAPSHOT_FILE}.tmp" && mv "${SNAPSHOT_FILE}.tmp" "$SNAPSHOT_FILE"
 
 log INFO "Criando link para 'latest'..."
-ln -sf "$SNAPSHOT_FILE" "$HOME/arch-system-tracker/snapshots/latest.json"
+ln -sf "$SNAPSHOT_FILE" "$HOME/.local/share/arch-system-tracker/snapshots/latest.json"
 
 log SUCESSO "Snapshot criado com sucesso em: $SNAPSHOT_FILE"
 
@@ -78,7 +103,7 @@ else
 fi
 
 log INFO "Comitando no Git..."
-cd ~/arch-system-tracker || exit 1
+cd ~/.local/share/arch-system-tracker || exit 1
 git add snapshots/
 git commit -m "$COMMIT_MSG" --quiet 2>/dev/null || log ERRO "Falha ao criar commit"
 
